@@ -16,95 +16,115 @@ import gala.integrate as gi
 import gala.coordinates as gc
 
 
-
 def mwlmc_ics():
-    wMW =  gd.PhaseSpacePosition(pos=[0,0,0]*u.kpc, vel=[0,0,0]*u.km/u.s)
+    """Initialize phase-space positions for Milky Way (MW) and Large Magellanic Cloud (LMC).
+    
+    Returns:
+        tuple: A tuple containing two PhaseSpacePosition objects:
+            - wMW: Phase-space position of the Milky Way (at origin with zero velocity)
+            - wLMC: Phase-space position of the LMC with observed position and velocity
+    """
+    wMW = gd.PhaseSpacePosition(pos=[0,0,0]*u.kpc, vel=[0,0,0]*u.km/u.s)
     wLMC = gd.PhaseSpacePosition(pos=[-1.1, -41.1, -27.9]*u.kpc,
-                                 vel=[-57., -226., 221.]*u.km/u.s)
+                               vel=[-57., -226., 221.]*u.km/u.s)
     
     return wMW, wLMC
 
+
 def host_ln_Lambda(df_params, r):
-    """
-    DF experienced by the satellite. 
+    """Compute the Coulomb logarithm for dynamical friction calculations.
     
-    For low-mass satllite's the Hashimoto+03 DF is used
-    (See Eq 5 in https://ui.adsabs.harvard.edu/abs/2003ApJ...582..196H/abstract) 
-    For massive satellites the van der Marel+2012 DF is used (See Eq A1 and
-    appendix A in https://ui.adsabs.harvard.edu/abs/2012ApJ...753....9V/abstract 
-    for details).
+    Implements different dynamical friction (DF) formulations based on satellite mass:
+    - For low-mass satellites: Hashimoto et al. 2003 DF (Eq. 5)
+    - For massive satellites: van der Marel et al. 2012 DF (Eq. A1)
     
-    For equal mass mergers L=0.02, C=0.17, and alpha=0.15 is a good
-    approximation
-    For 1:10 mergers L=0, C=1.22, and alpha=1.0 
+    When L=0, α=1, and C=1.4, the van der Marel DF reduces to the Hashimoto DF.
+    
+    Typical parameter values:
+    - Equal mass mergers: L=0.02, C=0.17, α=0.15
+    - 1:10 mass mergers: L=0, C=1.22, α=1.0
 
-    Note that when L=0, alpha=1, and C=1.4 the VdM DF reduces to the Hashimoto
+    Args:
+        df_params (list): Parameters for DF calculation [L, C, a, alpha, CoulombL]
+            L (float): Floor value (≥0) to prevent unphysical DF at small separations (r < C*a)
+            C (float): Scaling factor (>0)
+            a (float): Satellite scale length (Hernquist profile)
+            alpha (float): Power-law index (≥0)
+            CoulombL (str): DF formulation ('Hashimoto' or 'VdM')
+        r (float): Current radial position of the satellite [kpc]
 
-    Parameters:
-    -----------
-    df_params: list
-        L, C, a, alpha, low_mass
-        L : float >= 0
-            Floor to prevent the dynamical friction acceleration to become
-            unphysical for smaller separations (r < C*a)
-        C : float > 0
-        a : Satellite scale length (As described in VdM it is for the Hernquist profile)
-        alpha : float >= 0.0
-    DF.
-    r: float
-        position of the satellite
-    
-    
+    Returns:
+        float: Coulomb logarithm value
+
+    Raises:
+        AssertionError: If L < 0 or C ≤ 0
+
+    References:
+        - Hashimoto et al. 2003, ApJ, 582, 196
+        - van der Marel et al. 2012, ApJ, 753, 9
     """
-    
     L, C, a, alpha, CoulombL = df_params
 
-    assert L>=0, 'Floor value has to be larger than 0'
-    assert C>0, ''
+    assert L >= 0, 'Floor value has to be larger than 0'
+    assert C > 0, 'Scaling factor must be positive'
 
     if CoulombL == 'Hashimoto':
-        return alpha*np.log(r/(1.4*a))
+        return alpha * np.log(r/(1.4*a))
     elif CoulombL == 'VdM':
         return np.max([L, np.log(r/(C*a))**alpha])
 
 
 def host_sigma(host_vmax, host_rs, r):
+    """Compute velocity dispersion profile for an NFW halo with isotropic velocities.
+    
+    Implements the approximation from Zentner & Bullock 2003 (Eq. 6), which is valid
+    for an NFW halo with isotropic velocity dispersion.
+
+    Args:
+        host_vmax (float): Maximum circular velocity of the host halo [km/s]
+        host_rs (float): Scale radius of the host halo [kpc]
+        r (float): Radial position where to evaluate dispersion [kpc]
+
+    Returns:
+        float: Velocity dispersion at radius r [km/s]
+
+    References:
+        Zentner & Bullock 2003, ApJ, 598, 49
     """
-    Computes the velocity dispersion (sigma) of the host galaxy at a given radius.
-    Following   Zetner & Bolluck 2003
-    (https://ui.adsabs.harvard.edu/abs/2003ApJ...598...49Z/abstract). See Eq. 6
-    Which assumes and NFW halo and an isotropic velocity dispersion. 
-
-    """ 
     x = r / host_rs
-
     return host_vmax * 1.4393 * (x)**(0.354) / (1. + 1.1756*(x)**(0.725))
 
 
 def df_acceleration(w, G_gal, **kwargs):
-    """
-    Following methods from Patel+17a (Section 3), and Patel+20 that uses the DF as 
-    defined in Equation 8.7 in Binney & Tremaine 2008, note that this assumes 
-    a Maxwellian distribution for the velocities of the host halo with
-    dispersion sigma.
-
-    TODO: get gravitational constant from gala and make an input to match the
-    simulations.
-
-    Parameters:
-    ----------
-    w : phase space coordinates of the host and the satelites
-    G_gal : Gravitational constant. 
+    """Compute dynamical friction acceleration on a satellite galaxy.
     
-    Returns:
-    -------
+    Follows the formulation from Patel et al. 2017a (Section 3) and Patel et al. 2020,
+    which uses the DF expression from Binney & Tremaine 2008 (Eq. 8.7). Assumes
+    a Maxwellian velocity distribution for the host halo particles with dispersion σ.
 
+    Args:
+        w (PhaseSpacePosition): Combined phase-space coordinates of host and satellite
+        G_gal (float): Gravitational constant in appropriate units [kpc^3/(Msun Myr^2)]
+        **kwargs: Additional parameters required for calculation:
+            host_potential (Potential): Potential of the host galaxy
+            host_vmax (float): Maximum circular velocity of host [km/s]
+            host_rs (float): Scale radius of host halo [kpc]
+            Msat (float): Satellite mass [Msun]
+            host_Lambda_params (list): Parameters for Coulomb logarithm calculation
+
+    Returns:
+        ndarray: Dynamical friction acceleration vector [kpc/Myr^2]
+
+    References:
+        - Binney & Tremaine 2008, Galactic Dynamics (2nd edition)
+        - Patel et al. 2017a
+        - Patel et al. 2020
     """
     # read in the phase space
-    w1 = w[:,1:2] # sat
-    w2 = w[:,0:1] # host 
+    w1 = w[:,1:2]  # satellite
+    w2 = w[:,0:1]  # host 
 
-    #compute relative position and velocity
+    # compute relative position and velocity
     w_sat = w1[:3]-w2[:3]
     wv_sat = w1[3:]-w2[3:]
 
@@ -117,33 +137,51 @@ def df_acceleration(w, G_gal, **kwargs):
     Msat = kwargs['Msat']
     ln_Lambda_params = kwargs['host_Lambda_params']
     
-    
     dens = host_potential.density(x[0], t=np.array([0.]))[0]
-
     v_norm = np.sqrt(np.sum(v**2, axis=0))
-
     r = la.norm(x)
     
     v_disp = host_sigma(host_vmax, host_rs, r)
-            
     X = v_norm / (np.sqrt(2) * v_disp)
-
     fac = erf(X) - 2*X/np.sqrt(np.pi) * np.exp(-X**2)
-
     ln_Lambda = host_ln_Lambda(ln_Lambda_params, r)
 
-    dv_dynfric = (- 4*np.pi * G_gal**2 * Msat * dens * ln_Lambda  * fac * v)/ v_norm**3
+    dv_dynfric = (-4*np.pi * G_gal**2 * Msat * dens * ln_Lambda * fac * v) / v_norm**3
     
     return dv_dynfric.value
 
+
 class Orbit:
+    """Class for computing orbits with dynamical friction.
+    
+    Integrates the orbit of a satellite galaxy in a host potential, including
+    dynamical friction effects using a direct N-body approach.
+
+    Attributes:
+        host_potential (Potential): Potential of the host galaxy
+        sat_pot (Potential): Potential of the satellite galaxy
+        dt (float): Time step for integration [Gyr]
+        N (int): Number of integration steps
+        whost (PhaseSpacePosition): Initial conditions for host
+        wsat (PhaseSpacePosition): Initial conditions for satellite
+        w0s (PhaseSpacePosition): Combined initial conditions
+        G_gal (float): Gravitational constant [kpc^3/(Msun Myr^2)]
+        host_vmax (float): Maximum circular velocity of host [km/s]
+        host_rs (float): Scale radius of host halo [kpc]
+    """
+
     def __init__(self, host_potential, sat_potential, host_IC, sat_IC, dt, N, G_gal=4.498502151469554e-12):
-        """
-        Read parameters for integration 
-
-
-        """
+        """Initialize orbit integration parameters.
         
+        Args:
+            host_potential (Potential): Potential of the host galaxy
+            sat_potential (Potential): Potential of the satellite galaxy
+            host_IC (PhaseSpacePosition): Initial conditions for host
+            sat_IC (PhaseSpacePosition): Initial conditions for satellite
+            dt (float): Time step for integration [Gyr]
+            N (int): Number of integration steps
+            G_gal (float, optional): Gravitational constant. Defaults to value in kpc^3/(Msun Myr^2).
+        """
         self.host_potential = host_potential
         self.sat_pot = sat_potential
         self.dt = dt
@@ -151,58 +189,67 @@ class Orbit:
         self.whost = host_IC
         self.wsat = sat_IC
         
-
         print('Integrating orbit for satellite with: \n')
         print('Host ICs are: \n')
         print(host_IC)
         print('Satellites ICs are: \n')        
         print(sat_IC)
 
-
         self.w0s = gd.combine((self.whost, self.wsat))
-
-        self.G_gal =  G_gal # 4.498502151469554e-12  #kpc^3/(Msun Myr**2)
-
-        self.host_vmax = np.max(self.host_potential.circular_velocity(np.array([np.linspace(0.1, 300), np.zeros(50), np.zeros(50)])))
-        
+        self.G_gal = G_gal
+        self.host_vmax = np.max(self.host_potential.circular_velocity(
+            np.array([np.linspace(0.1, 300), np.zeros(50), np.zeros(50)])))
         self.host_rs = self.host_potential.parameters['halo']['r_s']
         
     def sat_orbit(self, df_params):
+        """Integrate satellite orbit with dynamical friction.
+        
+        Args:
+            df_params (list): Parameters for dynamical friction calculation [L, C, a, alpha, CoulombL]
+                See host_ln_Lambda() for parameter descriptions.
+
+        Returns:
+            Orbit: Integrated orbit including dynamical friction effects
+        """
         def F_MW(t, raw_w, nbody, chandra_kwargs):
-            """
-            Computes DF at every timestep
-            """
+            """Compute accelerations including dynamical friction at each timestep.
             
+            Args:
+                t (float): Current time
+                raw_w (ndarray): Current phase-space coordinates
+                nbody (DirectNBody): N-body system
+                chandra_kwargs (dict): Parameters for DF calculation
+
+            Returns:
+                ndarray: Time derivatives of phase-space coordinates
+            """
             w = gd.PhaseSpacePosition.from_w(raw_w, units=nbody.units)
             nbody.w0 = w
 
             wdot = np.zeros((2 * w.ndim, w.shape[0]))
-
-            # Compute the mutual N-body acceleration:
-            wdot[3:] = nbody._nbody_acceleration()
-            #print(wdot)
-            # compute DF 
+            wdot[3:] = nbody._nbody_acceleration()  # Mutual N-body acceleration
             chandmw = df_acceleration(raw_w, self.G_gal, **chandra_kwargs)
-            #print(chandmw)
-            wdot[3:, 1:] += chandmw
+            wdot[3:, 1:] += chandmw  # Add DF to satellite
             wdot[:3] = w.v_xyz.decompose(nbody.units).value
 
             return wdot
 
-
-        joint_pot = gd.DirectNBody(self.w0s, particle_potentials=[self.host_potential, self.sat_pot], units=galactic)
+        joint_pot = gd.DirectNBody(self.w0s, 
+                                 particle_potentials=[self.host_potential, self.sat_pot], 
+                                 units=galactic)
 
         chandra_kwargs = {
-        'host_potential': self.host_potential, 
-        'host_vmax': self.host_vmax.decompose(galactic).value,
-        'host_rs': self.host_rs.value,
-        'Msat': self.sat_pot.mass_enclosed([10000, 0, 0]),
-        'host_Lambda_params': df_params}
+            'host_potential': self.host_potential, 
+            'host_vmax': self.host_vmax.decompose(galactic).value,
+            'host_rs': self.host_rs.value,
+            'Msat': self.sat_pot.mass_enclosed([10000, 0, 0]),
+            'host_Lambda_params': df_params
+        }
 
         integrator = gi.LeapfrogIntegrator(
-        F_MW, func_args=(joint_pot, chandra_kwargs), 
-        func_units=joint_pot.units, 
-        progress=False)
+            F_MW, func_args=(joint_pot, chandra_kwargs), 
+            func_units=joint_pot.units, 
+            progress=False)
 
         orbit_MWDF = integrator.run(self.w0s, dt=self.dt*u.Gyr, n_steps=self.N)
 
