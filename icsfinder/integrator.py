@@ -24,9 +24,10 @@ def mwlmc_ics():
             - wMW: Phase-space position of the Milky Way (at origin with zero velocity)
             - wLMC: Phase-space position of the LMC with observed position and velocity
     """
-    wMW = gd.PhaseSpacePosition(pos=[0,0,0]*u.kpc, vel=[0,0,0]*u.km/u.s)
-    wLMC = gd.PhaseSpacePosition(pos=[-1.1, -41.1, -27.9]*u.kpc,
-                               vel=[-57., -226., 221.]*u.km/u.s)
+    wMW = gd.PhaseSpacePosition(pos=[0, 0, 0] * u.kpc,
+                                vel=[0, 0, 0] * u.km / u.s)
+    wLMC = gd.PhaseSpacePosition(pos=[-1.1, -41.1, -27.9] * u.kpc,
+                                vel=[-57., -226., 221.] * u.km / u.s)
     
     return wMW, wLMC
 
@@ -67,11 +68,13 @@ def host_ln_Lambda(df_params, r):
 
     assert L >= 0, 'Floor value has to be larger than 0'
     assert C > 0, 'Scaling factor must be positive'
+    assert alpha >= 0, 'power index must be positive'
+    assert a >= 0, 'halo scale length must be positive'
 
     if CoulombL == 'Hashimoto':
-        return alpha * np.log(r/(1.4*a))
+        return alpha * np.log(r / (1.4 * a))
     elif CoulombL == 'VdM':
-        return np.max([L, np.log(r/(C*a))**alpha])
+        return np.max([L, np.log(r / (C * a))**alpha])
 
 
 def host_sigma(host_vmax, host_rs, r):
@@ -92,7 +95,7 @@ def host_sigma(host_vmax, host_rs, r):
         Zentner & Bullock 2003, ApJ, 598, 49
     """
     x = r / host_rs
-    return host_vmax * 1.4393 * (x)**(0.354) / (1. + 1.1756*(x)**(0.725))
+    return host_vmax * 1.4393 * (x)**(0.354) / (1. + 1.1756 * (x)**(0.725))
 
 
 def df_acceleration(w, G_gal, **kwargs):
@@ -121,12 +124,12 @@ def df_acceleration(w, G_gal, **kwargs):
         - Patel et al. 2020
     """
     # read in the phase space
-    w1 = w[:,1:2]  # satellite
-    w2 = w[:,0:1]  # host 
+    w1 = w[:, 1:2]  # satellite
+    w2 = w[:, 0:1]  # host 
 
     # compute relative position and velocity
-    w_sat = w1[:3]-w2[:3]
-    wv_sat = w1[3:]-w2[3:]
+    w_sat = w1[:3] - w2[:3]
+    wv_sat = w1[3:] - w2[3:]
 
     x = np.ascontiguousarray(w_sat.T)
     v = wv_sat
@@ -143,10 +146,11 @@ def df_acceleration(w, G_gal, **kwargs):
     
     v_disp = host_sigma(host_vmax, host_rs, r)
     X = v_norm / (np.sqrt(2) * v_disp)
-    fac = erf(X) - 2*X/np.sqrt(np.pi) * np.exp(-X**2)
+    fac = erf(X) - 2 * X / np.sqrt(np.pi) * np.exp(-X**2)
     ln_Lambda = host_ln_Lambda(ln_Lambda_params, r)
 
-    dv_dynfric = (-4*np.pi * G_gal**2 * Msat * dens * ln_Lambda * fac * v) / v_norm**3
+    dv_dynfric = (-4 * np.pi * G_gal**2 * Msat * dens *
+                  ln_Lambda * fac * v) / v_norm**3
     
     return dv_dynfric.value
 
@@ -170,7 +174,8 @@ class Orbit:
         host_rs (float): Scale radius of host halo [kpc]
     """
 
-    def __init__(self, host_potential, sat_potential, host_IC, sat_IC, dt, N, G_gal=4.498502151469554e-12):
+    def __init__(self, host_potential, sat_potential, host_IC, sat_IC, dt, N,
+                 G_gal=4.498502151469554e-12):
         """Initialize orbit integration parameters.
         
         Args:
@@ -197,8 +202,10 @@ class Orbit:
 
         self.w0s = gd.combine((self.whost, self.wsat))
         self.G_gal = G_gal
-        self.host_vmax = np.max(self.host_potential.circular_velocity(
-            np.array([np.linspace(0.1, 300), np.zeros(50), np.zeros(50)])))
+        circ_vel_pos = np.array([np.linspace(0.1, 300, 50),
+                                 np.zeros(50), np.zeros(50)])
+        self.host_vmax = np.max(
+            self.host_potential.circular_velocity(circ_vel_pos))
         self.host_rs = self.host_potential.parameters['halo']['r_s']
         
     def sat_orbit(self, df_params):
@@ -234,12 +241,13 @@ class Orbit:
 
             return wdot
 
-        joint_pot = gd.DirectNBody(self.w0s, 
-                                 particle_potentials=[self.host_potential, self.sat_pot], 
-                                 units=galactic)
+        joint_pot = gd.DirectNBody(
+            self.w0s,
+            particle_potentials=[self.host_potential, self.sat_pot],
+            units=galactic)
 
         chandra_kwargs = {
-            'host_potential': self.host_potential, 
+            'host_potential': self.host_potential,
             'host_vmax': self.host_vmax.decompose(galactic).value,
             'host_rs': self.host_rs.value,
             'Msat': self.sat_pot.mass_enclosed([10000, 0, 0]),
@@ -247,10 +255,12 @@ class Orbit:
         }
 
         integrator = gi.LeapfrogIntegrator(
-            F_MW, func_args=(joint_pot, chandra_kwargs), 
-            func_units=joint_pot.units, 
+            F_MW,
+            func_args=(joint_pot, chandra_kwargs),
+            func_units=joint_pot.units,
             progress=False)
 
-        orbit_MWDF = integrator.run(self.w0s, dt=self.dt*u.Gyr, n_steps=self.N)
+        orbit_MWDF = integrator.run(self.w0s, dt=self.dt * u.Gyr,
+                                   n_steps=self.N)
 
         return orbit_MWDF
