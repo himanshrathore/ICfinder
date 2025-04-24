@@ -14,3 +14,36 @@ ICfinder is designed to find ICs for N-body simulations. The code integrates the
 
 ### Flexible Parameter System
   - Tunable Coulomb logarithm parameters
+
+## Installation 
+```
+git clone https://github.com/jngaravitoc/ICfinder.git
+cd ICfinder
+python -m pip install . 
+```
+## Requirements
+```
+python>=3.9
+numpy>=1.20
+scipy>=1.8
+astropy>=5.0
+gala>=1.7
+
+```
+
+## Virtual environment: 
+
+A virtual environment can be set up as:  
+
+```
+python -m venv icsfinder
+source cranes-env/bin/activate
+cd ~/icsfinder/
+python -m pip install .
+```
+The `icsfind' kernel can be installed in jupyter (after activating the virtual environment) via:
+
+```
+pip install ipykernel
+ipython kernel install --user --name=icsfinder
+```
