@@ -97,7 +97,10 @@ def host_sigma(host_mh, host_rh, r):
     B = (G*host_mh)/(12*a)
     C = (12*r*((r + a)**3)/(a**4))*np.log((r + a)/r)
     D = (r/(r + a))*(25 + 52*(r/a) + 42*((r/a)**2) + 12*((r/a)**3))
-    
+
+    if(C < D):
+        print(Found !)
+        
     return np.sqrt(B*(C - D))
 
 def df_acceleration(w, G_gal, **kwargs):
