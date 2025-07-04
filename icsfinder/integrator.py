@@ -100,6 +100,7 @@ def host_sigma(host_mh, host_rh, r):
 
     if(C < D):
         print("Found !")
+        print(r, host_mh, a)
         
     return np.sqrt(B*(C - D))
 
