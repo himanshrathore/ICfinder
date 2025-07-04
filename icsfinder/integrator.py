@@ -92,13 +92,13 @@ def host_sigma(host_mh, host_rh, r):
         Hernquist 1990, ApJ, 356:359-364
     """
 
-        G = 4.3022682e-6   # km^2 kpc /(Msun s^2)
-        a = host_rh
-		B = G * host_mh / (12. * a)
-		C = 12.*r*(r + a)**3. / a**4. *np.log((r + a)/r)
-		D = r / (r + a) * (25. + 52.*(r/a) + 42.*(r/a)**2. + 12.*(r/a)**3.)
+	G = 4.3022682e-6   # km^2 kpc /(Msun s^2)
+	a = host_rh
+	B = G * host_mh / (12. * a)
+	C = 12.*r*(r + a)**3. / a**4. *np.log((r + a)/r)
+	D = r / (r + a) * (25. + 52.*(r/a) + 42.*(r/a)**2. + 12.*(r/a)**3.)
 
-		return np.sqrt(B*(C - D))
+	return np.sqrt(B*(C - D))
 
 def df_acceleration(w, G_gal, **kwargs):
     """Compute dynamical friction acceleration on a satellite galaxy.
