@@ -99,7 +99,7 @@ def host_sigma(host_mh, host_rh, r):
     D = (r/(r + a))*(25 + 52*(r/a) + 42*((r/a)**2) + 12*((r/a)**3))
 
     if(C < D):
-        print(Found !)
+        print("Found !")
         
     return np.sqrt(B*(C - D))
 
