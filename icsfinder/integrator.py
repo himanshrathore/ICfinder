@@ -94,9 +94,9 @@ def host_sigma(host_mh, host_rh, r):
 
     G = 4.3022682e-6   # km^2 kpc /(Msun s^2)
     a = host_rh
-    B = G * host_mh / (12. * a)
-    C = 12.*r*(r + a)**3. / a**4. *np.log((r + a)/r)
-    D = r / (r + a) * (25. + 52.*(r/a) + 42.*(r/a)**2. + 12.*(r/a)**3.)
+    B = (G*host_mh)/(12*a)
+    C = (12*r*((r + a)**3)/(a**4))*np.log((r + a)/r)
+    D = (r/(r + a))*(25 + 52*(r/a) + 42*((r/a)**2) + 12*((r/a)**3))
     
     return np.sqrt(B*(C - D))
 
