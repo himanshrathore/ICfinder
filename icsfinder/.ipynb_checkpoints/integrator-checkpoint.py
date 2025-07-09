@@ -14,10 +14,7 @@ from gala.units import galactic
 import gala.dynamics as gd
 import gala.integrate as gi
 import gala.coordinates as gc
-from gala.units import UnitSystem
 
-#defining units
-usys = UnitSystem(u.kpc, u.Myr, u.Msun, u.radian, u.kpc/u.Myr)
 
 def mwlmc_ics():
     """Initialize phase-space positions for Milky Way (MW) and Large Magellanic Cloud (LMC).
@@ -27,10 +24,10 @@ def mwlmc_ics():
             - wMW: Phase-space position of the Milky Way (at origin with zero velocity)
             - wLMC: Phase-space position of the LMC with observed position and velocity
     """
-    wMW = gd.PhaseSpacePosition(pos=[0, 0, 0]*u.kpc,
-                                vel=([0, 0, 0]*u.km/u.s).to(u.kpc/u.Myr))
-    wLMC = gd.PhaseSpacePosition(pos=[-0.8, -41.5, -26.9]*u.kpc,
-                                vel=([-57., -226., 221.]*u.km/u.s).to(u.kpc/u.Myr))
+    wMW = gd.PhaseSpacePosition(pos=[0, 0, 0] * u.kpc,
+                                vel=[0, 0, 0] * u.km / u.s)
+    wLMC = gd.PhaseSpacePosition(pos=[-0.8, -41.5, -26.9] * u.kpc,
+                                vel=[-57., -226., 221.] * u.km / u.s)
     
     return wMW, wLMC
 
@@ -194,7 +191,7 @@ class Orbit:
             sat_IC (PhaseSpacePosition): Initial conditions for satellite
             host_mh (float): Host halo mass [Msun]
             host_rh (float): Scale radius of host halo [kpc]
-            dt (float): Time step for integration [Myr]
+            dt (float): Time step for integration [Gyr]
             N (int): Number of integration steps
             G_gal (float, optional): Gravitational constant. Defaults to value in kpc^3/(Msun Myr^2).
         """
@@ -231,14 +228,14 @@ class Orbit:
             
             Args:
                 t (float): Current time
-                raw_w (ndarray): Current phase-space coordinates. Units of le
+                raw_w (ndarray): Current phase-space coordinates
                 nbody (DirectNBody): N-body system
                 chandra_kwargs (dict): Parameters for DF calculation
 
             Returns:
                 ndarray: Time derivatives of phase-space coordinates
             """
-            w = gd.PhaseSpacePosition.from_w(raw_w, units=usys)
+            w = gd.PhaseSpacePosition.from_w(raw_w, units=nbody.units)
             nbody.w0 = w
 
             wdot = np.zeros((2 * w.ndim, w.shape[0]))
@@ -252,7 +249,7 @@ class Orbit:
         joint_pot = gd.DirectNBody(
             self.w0s,
             particle_potentials=[self.host_potential, self.sat_pot],
-            units=usys)
+            units=galactic)
 
         chandra_kwargs = {
             'host_potential': self.host_potential,
@@ -268,7 +265,7 @@ class Orbit:
             func_units=joint_pot.units,
             progress=False)
 
-        orbit_MWDF = integrator.run(self.w0s, dt=self.dt * u.Myr,
+        orbit_MWDF = integrator.run(self.w0s, dt=self.dt * u.Gyr,
                                    n_steps=self.N)
 
         return orbit_MWDF
