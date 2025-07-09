@@ -86,13 +86,13 @@ def host_sigma(host_mh, host_rh, r):
         r (float): Radial position where to evaluate dispersion [kpc]
 
     Returns:
-        float: Velocity dispersion at radius r [km/s]
+        float: Velocity dispersion at radius r [kpc/Myr]
 
     References:
         Hernquist 1990, ApJ, 356:359-364
     """
 
-    G = 4.3022682e-6   # km^2 kpc /(Msun s^2)
+    G = 4.498502151469554e-12   # kpc^3/(Msun Myr^2)
     a = host_rh
     B = (G*host_mh)/(12*a)
     C = (12*r*((r + a)**3)/(a**4))*np.log((r + a)/r)
