@@ -26,8 +26,8 @@ def mwlmc_ics():
     """
     wMW = gd.PhaseSpacePosition(pos=[0, 0, 0] * u.kpc,
                                 vel=[0, 0, 0] * u.km / u.s)
-    wLMC = gd.PhaseSpacePosition(pos=[-0.8, -41.5, -26.9] * u.kpc,
-                                vel=[-57., -226., 221.] * u.km / u.s)
+    wLMC = gd.PhaseSpacePosition(pos=[-1.06, -41.05, -27.83] * u.kpc,
+                                vel=[-57.60, -225.96, 221.16] * u.km / u.s)
     
     return wMW, wLMC
 
@@ -197,7 +197,7 @@ class Orbit:
         """
         self.host_potential = host_potential
         self.sat_pot = sat_potential
-        self.dt = dt
+        self.dt = -1*dt #back integration
         self.N = N
         self.whost = host_IC
         self.wsat = sat_IC
