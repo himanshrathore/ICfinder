@@ -169,7 +169,7 @@ class Orbit:
     """Class for computing orbits with dynamical friction. Integrates the orbit of a satellite galaxy in a host potential, including dynamical friction effects using a direct N-body approach.
     """
 
-    def __init__(self, host_potential, sat_potential, host_IC, sat_IC, host_mh, host_rh, dt, N, G_gal):
+    def __init__(self, host_potential, sat_potential, host_IC, sat_IC, host_mh, host_rh, dt, N, G_gal = G):
         """Initialize orbit integration parameters.
         
         Args:
