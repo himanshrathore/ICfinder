@@ -211,13 +211,13 @@ class Orbit:
             Returns:
                 ndarray: Time derivatives of phase-space coordinates. Astropy qty.
             """
-            w = gd.PhaseSpacePosition.from_w(raw_w)
+            w = gd.PhaseSpacePosition.from_w(raw_w, units = nbody.units)
             nbody.w0 = w
             wdot = np.zeros((2 * w.ndim, w.shape[0]))
             wdot[3:] = nbody._nbody_acceleration()  # Mutual N-body acceleration
             chandmw = df_acceleration(raw_w, **chandra_kwargs)
             wdot[3:, 1:] += np.sign(self.dt)*chandmw  # Add DF to satellite
-            wdot[:3] = w.v_xyz.decompose()
+            wdot[:3] = w.v_xyz.decompose(nbody.units)
 
             return wdot
 
