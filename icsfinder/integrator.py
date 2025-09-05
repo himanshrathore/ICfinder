@@ -162,7 +162,7 @@ def df_acceleration(w, G_gal, **kwargs):
     dv_dynfric = (-4 * np.pi * G_gal**2 * Msat * dens *
                   ln_Lambda * fac * v) / v_norm**3
     
-	print('Dynamical friction with units: ', dv_dynfric, '\n')
+    print('Dynamical friction with units: ', dv_dynfric, '\n')
     return dv_dynfric.value
 
 
