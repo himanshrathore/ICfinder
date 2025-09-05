@@ -217,29 +217,22 @@ class Orbit:
         self.w0s = gd.combine((self.whost, self.wsat))
         self.G_gal = G_gal
         
-    def sat_orbit(self, df_params, direction = 'backward'):
+    def sat_orbit(self, df_params):
         """Integrate satellite orbit with dynamical friction.
         
         Args:
             df_params (list): Parameters for dynamical friction calculation [L, C, a, alpha, CoulombL]
                 See host_ln_Lambda() for parameter descriptions.
-            direction: 'backward' or 'forward', depending on if you are going back in time or forward in time
 
         Returns:
             Orbit: Integrated orbit including dynamical friction effects
         """
         
-        if(direction == 'backward'):
-            sign = 1
-        elif(direction == 'forward'):
-            sign = -1
-        
-        def F_MW(t, raw_w, nbody, chandra_kwargs, sign):
+        def F_MW(t, raw_w, nbody, chandra_kwargs):
             """Compute accelerations including dynamical friction at each timestep.
             
             Args:
                 t (float): Current time
-                sign (int): 1 for backward integration, -1 for forward integration
                 raw_w (ndarray): Current phase-space coordinates
                 nbody (DirectNBody): N-body system
                 chandra_kwargs (dict): Parameters for DF calculation
@@ -252,7 +245,7 @@ class Orbit:
 
             wdot = np.zeros((2 * w.ndim, w.shape[0]))
             wdot[3:] = nbody._nbody_acceleration()  # Mutual N-body acceleration
-            chandmw = sign*df_acceleration(raw_w, self.G_gal, **chandra_kwargs)
+            chandmw = df_acceleration(raw_w, self.G_gal, **chandra_kwargs)
             wdot[3:, 1:] += chandmw  # Add DF to satellite
             wdot[:3] = w.v_xyz.decompose(nbody.units).value
 
@@ -273,7 +266,7 @@ class Orbit:
 
         integrator = gi.LeapfrogIntegrator(
             F_MW,
-            func_args=(joint_pot, chandra_kwargs, sign),
+            func_args=(joint_pot, chandra_kwargs),
             func_units=joint_pot.units,
             progress=False)
 
