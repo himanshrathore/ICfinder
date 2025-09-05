@@ -162,6 +162,7 @@ def df_acceleration(w, G_gal, **kwargs):
     dv_dynfric = (-4 * np.pi * G_gal**2 * Msat * dens *
                   ln_Lambda * fac * v) / v_norm**3
     
+	print('Dynamical friction with units: ', dv_dynfric, '\n')
     return dv_dynfric.value
 
 
@@ -245,9 +246,9 @@ class Orbit:
 
             wdot = np.zeros((2 * w.ndim, w.shape[0]))
             wdot[3:] = nbody._nbody_acceleration()  # Mutual N-body acceleration
-            print(wdot)
+            #print('Just the potential: ', wdot[3:], '\n')
             chandmw = df_acceleration(raw_w, self.G_gal, **chandra_kwargs)
-            print(chandmw)
+            #print('Dynamical friction: ', chandmw, '\n')
             wdot[3:, 1:] += np.sign(self.dt)*chandmw  # Add DF to satellite
             wdot[:3] = w.v_xyz.decompose(nbody.units).value
 
