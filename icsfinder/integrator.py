@@ -16,18 +16,22 @@ import gala.integrate as gi
 import gala.coordinates as gc
 
 
-def mwlmc_ics():
+def mwlmc_ics(pos_mw = [0, 0, 0], vel_mw = [0, 0, 0], pos_lmc = [-1.06, -41.05, -27.83], vel_lmc = [-57.60, -225.96, 221.16]):
     """Initialize phase-space positions for Milky Way (MW) and Large Magellanic Cloud (LMC).
-    
+    Args:
+        -> pos_mw: list of 3 elements describing the initial cartesian position vector of the MW (assumed to be in kpc)
+        -> vel_mw: list of 3 elements describing the initial cartesian velocity vector of the MW (assumed to be in km/s)
+        -> pos_lmc: list of 3 elements describing the initial cartesian position vector of the LMC (assumed to be in kpc)
+        -> vel_lmc: list of 3 elements describing the initial cartesian velocity vector of the LMC (assumed to be in kpc)
     Returns:
         tuple: A tuple containing two PhaseSpacePosition objects:
             - wMW: Phase-space position of the Milky Way (at origin with zero velocity)
             - wLMC: Phase-space position of the LMC with observed position and velocity
     """
-    wMW = gd.PhaseSpacePosition(pos=[0, 0, 0] * u.kpc,
-                                vel=[0, 0, 0] * u.km / u.s)
-    wLMC = gd.PhaseSpacePosition(pos=[-1.06, -41.05, -27.83] * u.kpc,
-                                vel=[-57.60, -225.96, 221.16] * u.km / u.s)
+    wMW = gd.PhaseSpacePosition(pos=pos_mw * u.kpc,
+                                vel=vel_mw * u.km / u.s)
+    wLMC = gd.PhaseSpacePosition(pos=pos_lmc * u.kpc,
+                                vel=vel_lmc * u.km / u.s)
     
     return wMW, wLMC
 
