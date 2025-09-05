@@ -199,31 +199,30 @@ class Orbit:
             Orbit: Integrated orbit including dynamical friction effects
         """
         
-        def F_MW(t, raw_w, nbody, chandra_kwargs):
+        def F_MW(t, w, nbody, chandra_kwargs):
             """Compute accelerations including dynamical friction at each timestep.
             
             Args:
                 t: Current time, astropy qty
-                raw_w (ndarray): Current phase-space coordinates, astropy qty
+                w (ndarray): Current phase-space coordinates, astropy qty
                 nbody (DirectNBody): N-body system
                 chandra_kwargs (dict): Parameters for DF calculation
 
             Returns:
                 ndarray: Time derivatives of phase-space coordinates. Astropy qty.
             """
-            w = gd.PhaseSpacePosition.from_w(raw_w, units = nbody.units)
             nbody.w0 = w
             wdot = np.zeros((2 * w.ndim, w.shape[0]))
             wdot[3:] = nbody._nbody_acceleration()  # Mutual N-body acceleration
-            chandmw = df_acceleration(raw_w, **chandra_kwargs)
+            chandmw = df_acceleration(w, **chandra_kwargs)
             wdot[3:, 1:] += np.sign(self.dt)*chandmw  # Add DF to satellite
-            wdot[:3] = w.v_xyz.decompose(nbody.units)
+            wdot[:3] = w.v_xyz.decompose()
 
             return wdot
 
         joint_pot = gd.DirectNBody(
             self.w0s,
-            particle_potentials=[self.host_potential, self.sat_pot], units = galactic)
+            particle_potentials=[self.host_potential, self.sat_pot])
 
         chandra_kwargs = {
             'host_potential': self.host_potential,
@@ -236,7 +235,7 @@ class Orbit:
         integrator = gi.LeapfrogIntegrator(
             F_MW,
             func_args=(joint_pot, chandra_kwargs),
-            func_units=joint_pot.units,
+            func_units=galactic,
             progress=False)
 
         orbit_MWDF = integrator.run(self.w0s, dt=self.dt,
