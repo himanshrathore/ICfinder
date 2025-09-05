@@ -234,7 +234,7 @@ class Orbit:
         elif(direction == 'forward'):
             sign = -1
         
-        def F_MW(t, sign, raw_w, nbody, chandra_kwargs):
+        def F_MW(t, raw_w, nbody, chandra_kwargs, sign):
             """Compute accelerations including dynamical friction at each timestep.
             
             Args:
@@ -273,7 +273,7 @@ class Orbit:
 
         integrator = gi.LeapfrogIntegrator(
             F_MW,
-            func_args=(joint_pot, chandra_kwargs),
+            func_args=(joint_pot, chandra_kwargs, sign),
             func_units=joint_pot.units,
             progress=False)
 
