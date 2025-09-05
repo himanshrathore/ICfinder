@@ -114,7 +114,7 @@ def df_acceleration(w, G_gal, **kwargs):
     a Maxwellian velocity distribution for the host halo particles with dispersion σ.
 
     Args:
-        w (PhaseSpacePosition): Combined phase-space coordinates of host and satellite
+        w (PhaseSpacePosition): Combined phase-space coordinates of host and satellite.
         G_gal (float): Gravitational constant in appropriate units [kpc^3/(Msun Myr^2)]
         **kwargs: Additional parameters required for calculation:
             host_potential (Potential): Potential of the host galaxy
@@ -132,6 +132,7 @@ def df_acceleration(w, G_gal, **kwargs):
         - Patel et al. 2020
     """
     # read in the phase space
+    print('w with units: ', w, '\n')
     w1 = w[:, 1:2]  # satellite
     w2 = w[:, 0:1]  # host 
 
