@@ -2,8 +2,6 @@
 import numpy as np
 import astropy.units as u
 from astropy.constants import G
-import matplotlib.pyplot as plt
-from scipy.optimize import leastsq
 import scipy.linalg as la
 from scipy.special import erf
 from scipy.signal import argrelextrema
@@ -19,14 +17,15 @@ import gala.coordinates as gc
 def mwlmc_ics(pos_mw = [0, 0, 0], vel_mw = [0, 0, 0], pos_lmc = [-1.06, -41.05, -27.83], vel_lmc = [-57.60, -225.96, 221.16]):
     """Initialize phase-space positions for Milky Way (MW) and Large Magellanic Cloud (LMC).
     Args:
+        Note: for these do not give units, I will internally assign units.
         -> pos_mw: list of 3 elements describing the initial cartesian position vector of the MW (assumed to be in kpc)
         -> vel_mw: list of 3 elements describing the initial cartesian velocity vector of the MW (assumed to be in km/s)
         -> pos_lmc: list of 3 elements describing the initial cartesian position vector of the LMC (assumed to be in kpc)
         -> vel_lmc: list of 3 elements describing the initial cartesian velocity vector of the LMC (assumed to be in kpc)
     Returns:
         tuple: A tuple containing two PhaseSpacePosition objects:
-            - wMW: Phase-space position of the Milky Way (at origin with zero velocity)
-            - wLMC: Phase-space position of the LMC with observed position and velocity
+            - wMW: Phase-space position of the Milky Way (at origin with zero velocity). This is an astropy qty with unit of kpc.
+            - wLMC: Phase-space position of the LMC with observed position and velocity. This is an astropy qty with unit of km/s.
     """
     wMW = gd.PhaseSpacePosition(pos=pos_mw * u.kpc,
                                 vel=vel_mw * u.km / u.s)
@@ -51,15 +50,15 @@ def host_ln_Lambda(df_params, r):
 
     Args:
         df_params (list): Parameters for DF calculation [L, C, a, alpha, CoulombL]
-            L (float): Floor value (≥0) to prevent unphysical DF at small separations (r < C*a)
-            C (float): Scaling factor (>0)
-            a (float): Satellite scale length (Hernquist profile)
-            alpha (float): Power-law index (≥0)
+            L (float): Floor value (≥0) to prevent unphysical DF at small separations (r < C*a). This is dimensionless.
+            C (float): Scaling factor (>0). This is dimensionless.
+            a (float): Satellite halo scale radius (Hernquist profile). This should be an astropy qty with unit of kpc.
+            alpha (float): Power-law index (≥0). This is dimensionless.
             CoulombL (str): DF formulation ('Hashimoto' or 'VdM')
-        r (float): Current radial position of the satellite [kpc]
+        r (float): Current radial position of the satellite [kpc]. This should be an astropy qty with unit of kpc.
 
     Returns:
-        float: Coulomb logarithm value
+        float: Coulomb logarithm value (dimensionless)
 
     Raises:
         AssertionError: If L < 0 or C ≤ 0
@@ -73,30 +72,29 @@ def host_ln_Lambda(df_params, r):
     assert L >= 0, 'Floor value has to be larger than 0'
     assert C > 0, 'Scaling factor must be positive'
     assert alpha >= 0, 'power index must be positive'
-    assert a >= 0, 'halo scale length must be positive'
+    assert a >= 0, 'halo scale radius must be positive'
 
     if CoulombL == 'Hashimoto':
         return alpha * np.log(r / (1.4 * a))
     elif CoulombL == 'VdM':
-        return np.max([L, np.log(r / (C * a))**alpha])
+        return np.max([L, np.log((r / (C * a))**alpha)])
 
 
 def host_sigma(host_mh, host_rh, r):
     """Compute velocity dispersion profile for a Hernquist profile with isotropic velocities. Taken from Hayden Foote.
     Equation 10 of Hernquist 1990.
     Args:
-        host_mh (float): Host halo mass [Msun]
-        host_rh (float): Scale radius of the host halo [kpc]
-        r (float): Radial position where to evaluate dispersion [kpc]
+        host_mh (float): Host halo mass [Msun]. This should be an astropy qty with unit of Msun.
+        host_rh (float): Scale radius of the host halo [kpc]. This should be an astropy qty with unit of kpc.
+        r (float): Radial position where to evaluate dispersion [kpc]. This should be an astropy qty with unit of kpc.
 
     Returns:
-        float: Velocity dispersion at radius r [km/s]
+        float: Velocity dispersion at radius r [km/s]. This is an astropy qty with unit of km/s.
 
     References:
         Hernquist 1990, ApJ, 356:359-364
     """
 
-    G = 4.3022682e-6   # km^2 kpc /(Msun s^2)
     a = host_rh
     B = (G*host_mh)/(12*a)
     C = (12*r*((r + a)**3)/(a**4))*np.log((r + a)/r)
@@ -106,7 +104,7 @@ def host_sigma(host_mh, host_rh, r):
         print("Found !")
         print(r, host_mh, a)
         
-    return np.sqrt(B*(C - D))
+    return np.sqrt(B*(C - D))*to(u.km/u.s)
 
 def df_acceleration(w, G_gal, **kwargs):
     """Compute dynamical friction acceleration on a satellite galaxy.
