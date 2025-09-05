@@ -223,7 +223,7 @@ class Orbit:
 
         joint_pot = gd.DirectNBody(
             self.w0s,
-            particle_potentials=[self.host_potential, self.sat_pot])
+            particle_potentials=[self.host_potential, self.sat_pot], units = galactic)
 
         chandra_kwargs = {
             'host_potential': self.host_potential,
