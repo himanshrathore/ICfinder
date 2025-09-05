@@ -104,7 +104,7 @@ def host_sigma(host_mh, host_rh, r):
         print("Found !")
         print(r, host_mh, a)
         
-    return np.sqrt(B*(C - D))*to(u.km/u.s)
+    return np.sqrt(B*(C - D)).to(u.km/u.s)
 
 def df_acceleration(w, G_gal, **kwargs):
     """Compute dynamical friction acceleration on a satellite galaxy.
