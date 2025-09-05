@@ -166,47 +166,31 @@ def df_acceleration(w, G_gal, **kwargs):
 
 
 class Orbit:
-    """Class for computing orbits with dynamical friction.
-    
-    Integrates the orbit of a satellite galaxy in a host potential, including
-    dynamical friction effects using a direct N-body approach.
-
-    Attributes:
-        host_potential (Potential): Potential of the host galaxy
-        sat_pot (Potential): Potential of the satellite galaxy
-        dt (float): Time step for integration [Gyr]
-        N (int): Number of integration steps
-        whost (PhaseSpacePosition): Initial conditions for host
-        wsat (PhaseSpacePosition): Initial conditions for satellite
-        w0s (PhaseSpacePosition): Combined initial conditions
-        G_gal (float): Gravitational constant [kpc^3/(Msun Myr^2)]
-        host_mh (float): Host halo mass [Msun]
-        host_rh (float): Scale radius of host halo [kpc]
+    """Class for computing orbits with dynamical friction. Integrates the orbit of a satellite galaxy in a host potential, including dynamical friction effects using a direct N-body approach.
     """
 
-    def __init__(self, host_potential, sat_potential, host_IC, sat_IC, host_mh, host_rh, dt, N,
-                 G_gal=4.498502151469554e-12):
+    def __init__(self, host_potential, sat_potential, host_IC, sat_IC, host_mh, host_rh, dt, N, G_gal):
         """Initialize orbit integration parameters.
         
         Args:
-            host_potential (Potential): Potential of the host galaxy
-            sat_potential (Potential): Potential of the satellite galaxy
-            host_IC (PhaseSpacePosition): Initial conditions for host
-            sat_IC (PhaseSpacePosition): Initial conditions for satellite
-            host_mh (float): Host halo mass [Msun]
-            host_rh (float): Scale radius of host halo [kpc]
-            dt (float): Time step for integration [Gyr]
+            host_potential (Potential): Potential of the host galaxy. This is a gala object.
+            sat_potential (Potential): Potential of the satellite galaxy. This is a gala object.
+            host_IC (PhaseSpacePosition): Initial conditions for host. This is an astropy qty. Units involved are kpc and km/s.
+            sat_IC (PhaseSpacePosition): Initial conditions for sat. This is an astropy qty. Units involved are kpc and km/s.
+            host_mh (float): Host halo mass [Msun]. This is an astropy qty.
+            host_rh (float): Scale radius of host halo [kpc]. This is an astropy qty.
+            dt (float): Time step for integration [Gyr]. This is NOT a astropy qty.
             N (int): Number of integration steps
-            G_gal (float, optional): Gravitational constant. Defaults to value in kpc^3/(Msun Myr^2).
+            G_gal (float, optional): Gravitational constant. This is an astropy qty. Give in units of kpc^3/(Msun Myr^2).
         """
-        self.host_potential = host_potential
-        self.sat_pot = sat_potential
-        self.dt = -1*dt #back integration
+        self.host_potential = host_potential #gala object
+        self.sat_pot = sat_potential #astropy qty
+        self.dt = dt #dimensionless, not a qty
         self.N = N
-        self.whost = host_IC
-        self.wsat = sat_IC
-        self.host_mh = host_mh
-        self.host_rh = host_rh
+        self.whost = host_IC #astropy qty, units involved are kpc and km/s
+        self.wsat = sat_IC #astropy qty, units involved are kpc and km/s
+        self.host_mh = host_mh #astropy qty, unit of Msun
+        self.host_rh = host_rh #astropy qty, unit of Msun
         
         print('Integrating orbit for satellite with: \n')
         print('Host ICs are: \n')
@@ -215,6 +199,7 @@ class Orbit:
         print(sat_IC)
 
         self.w0s = gd.combine((self.whost, self.wsat))
+        print('w0s are: ', self.w0s, '\n')
         self.G_gal = G_gal
         
     def sat_orbit(self, df_params):
