@@ -245,7 +245,7 @@ class Orbit:
             wdot = np.zeros((2 * w.ndim, w.shape[0]))
             wdot[3:] = nbody._nbody_acceleration()  # Mutual N-body acceleration
             chandmw = df_acceleration(raw_w, self.G_gal, **chandra_kwargs)
-            wdot[3:, 1:] += (-1)*np.sign(self.dt)*chandmw  # Add DF to satellite
+            wdot[3:, 1:] += chandmw  # Add DF to satellite
             wdot[:3] = w.v_xyz.decompose(nbody.units).value
             return wdot
 
