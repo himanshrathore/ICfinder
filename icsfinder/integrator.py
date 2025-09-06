@@ -33,7 +33,7 @@ def mwlmc_ics(pos_mw = [0, 0, 0], vel_mw = [0, 0, 0], pos_lmc = [-1.06, -41.05, 
     wLMC = gd.PhaseSpacePosition(pos=pos_lmc * u.kpc,
                                 vel=vel_lmc * u.km / u.s)
     
-    return wMW, wLMC
+    return wMW, wLMC #these are astropy quantities
 
 
 def host_ln_Lambda(df_params, r):
@@ -102,11 +102,9 @@ def host_sigma(host_mh, host_rh, r):
     C = (12*r*((r + a)**3)/(a**4))*np.log((r + a)/r)
     D = (r/(r + a))*(25 + 52*(r/a) + 42*((r/a)**2) + 12*((r/a)**3))
 
-    if(C < D):
-        print("Found !")
-        print(r, host_mh, a)
-        
-    return np.sqrt(B*(C - D))
+    sigma = np.sqrt(B*(C - D))*u.km/u.s #in km/s
+    
+    return sigma.to(u.kpc/u.Myr).value #in kpc/Myr, this is NOT an astropy qty
 
 def df_acceleration(w, G_gal, **kwargs):
     """Compute dynamical friction acceleration on a satellite galaxy.
@@ -142,7 +140,7 @@ def df_acceleration(w, G_gal, **kwargs):
     wv_sat = w1[3:] - w2[3:]
 
     x = np.ascontiguousarray(w_sat.T)
-    v = wv_sat
+    v = wv_sat*u.kpc/u.Myr
     
     host_potential = kwargs['host_potential']
     host_mh = kwargs['host_mh']
@@ -154,15 +152,17 @@ def df_acceleration(w, G_gal, **kwargs):
     v_norm = np.sqrt(np.sum(v**2, axis=0))
     r = la.norm(x)
     
-    v_disp = host_sigma(host_mh, host_rh, r)
+    v_disp = host_sigma(host_mh, host_rh, r)*u.kpc/u.Myr #assigning appropriate units
     X = v_norm / (np.sqrt(2) * v_disp)
     fac = erf(X) - 2 * X / np.sqrt(np.pi) * np.exp(-X**2)
     ln_Lambda = host_ln_Lambda(ln_Lambda_params, r)
-
-    dv_dynfric = (-4 * np.pi * G_gal**2 * Msat * dens *
+    
+    G_gal_units = G_gal*(u.kpc**3/(u.Msun*(u.Myr**2)))
+    
+    dv_dynfric = (-4 * np.pi * (G_gal_units**2) * Msat * dens *
                   ln_Lambda * fac * v) / v_norm**3
     
-    return dv_dynfric.value
+    return dv_dynfric.value #NOT an astropy quantity, expressed in kpc/(Myr^2)
 
 
 class Orbit:
@@ -201,7 +201,7 @@ class Orbit:
         """
         self.host_potential = host_potential
         self.sat_pot = sat_potential
-        self.dt = -1*dt #back integration
+        self.dt = dt
         self.N = N
         self.whost = host_IC
         self.wsat = sat_IC
@@ -245,9 +245,8 @@ class Orbit:
             wdot = np.zeros((2 * w.ndim, w.shape[0]))
             wdot[3:] = nbody._nbody_acceleration()  # Mutual N-body acceleration
             chandmw = df_acceleration(raw_w, self.G_gal, **chandra_kwargs)
-            wdot[3:, 1:] += chandmw  # Add DF to satellite
+            wdot[3:, 1:] += np.sign(self.dt)*chandmw  # Add DF to satellite, depending on backward or forward integration
             wdot[:3] = w.v_xyz.decompose(nbody.units).value
-
             return wdot
 
         joint_pot = gd.DirectNBody(
